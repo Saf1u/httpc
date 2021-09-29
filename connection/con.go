@@ -55,7 +55,12 @@ func buildGet(req *Request) string {
 }
 
 func buildPost(req *Request) string {
-	body := req.Body[1 : len(req.Body)-1]
+	body := ""
+	if req.Body == "" {
+		body = req.File
+	} else {
+		body = req.Body
+	}
 	s := "POST " + req.ResourcePath + " " + req.ProtocolVersion + "\r\n" + "Host: " + req.Host + "\r\n"
 	for key, val := range req.Headers {
 		s = s + key + ":" + val + "\r\n"
