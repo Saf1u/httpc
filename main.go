@@ -43,7 +43,6 @@ var (
 	`
 )
 
-
 type headerFlag []string
 
 func (h *headerFlag) String() string {
@@ -187,7 +186,6 @@ func main() {
 	httpTemplate := connection.BuildHttpTemplate(req)
 
 	addr := req.Host + ":" + req.Port
-	fmt.Println(addr)
 	con, err := net.Dial("tcp", addr)
 	defer func() {
 		if con != nil {
@@ -210,7 +208,12 @@ func main() {
 		return
 	}
 	stringRep := string(buf)
-	fmt.Println(stringRep)
+	res := strings.Split(stringRep, "\n\r")
+	if req.Opts["verbose"] {
+		fmt.Println(res[0])
+	}
+	fmt.Println(res[1])
+
 }
 
 func extractHeaders(header headerFlag) map[string]string {
