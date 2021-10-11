@@ -1,3 +1,3 @@
-module net445
+module httpc
 
 go 1.15

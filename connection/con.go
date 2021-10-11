@@ -15,6 +15,7 @@ type Request struct {
 	Headers         map[string]string
 	File            string
 	Body            string
+	DumpFile        string
 	Opts            map[string]bool
 }
 

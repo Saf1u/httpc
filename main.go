@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
-	"net445/connection"
+	"httpc/connection"
 	"os"
 	"strconv"
 	"strings"
@@ -58,25 +58,48 @@ func parse() *connection.Request {
 	getCommmand := flag.NewFlagSet("get", flag.ExitOnError)
 	postCommand := flag.NewFlagSet("post", flag.ExitOnError)
 	var headers headerFlag
+	var fileToSave string
 	verbose := false
 	getCommmand.BoolVar(&verbose, "v", false, "verbose option")
 	postCommand.BoolVar(&verbose, "v", false, "verbose option")
 	getCommmand.Var(&headers, "h", "header flags")
 	postCommand.Var(&headers, "h", "header flags")
+	getCommmand.StringVar(&fileToSave, "o", "", "destination file")
+	postCommand.StringVar(&fileToSave, "o", "", "destination file")
+
 	bodyString := ""
 	postCommand.StringVar(&bodyString, "d", "", "string body")
 	file := ""
 	postCommand.StringVar(&file, "f", "", "file option")
 
-	if len(os.Args) < 2 {
-		fmt.Println("not recognized")
-		fmt.Println("see help for usage")
+	if len(os.Args) < 3 {
+		fmt.Println(help)
 		os.Exit(0)
+	}
+
+	switch os.Args[1] {
+	case "help":
+		if len(os.Args) == 3 {
+			if os.Args[2] == "get" || os.Args[2] == "post" {
+				if os.Args[2] == "get" {
+					fmt.Println(get)
+					os.Exit(0)
+				} else {
+					fmt.Println(post)
+					os.Exit(0)
+				}
+
+			} else {
+				fmt.Println("not recognized")
+				fmt.Println("see help for usage")
+				os.Exit(0)
+			}
+		}
 	}
 	switch os.Args[1] {
 	case "get":
 		if len(os.Args) >= 3 {
-			if os.Args[2] == "help" {
+			if os.Args[1] == "help" {
 				fmt.Println(get)
 			} else {
 				getCommmand.Parse(os.Args[2:])
@@ -88,7 +111,7 @@ func parse() *connection.Request {
 		}
 	case "post":
 		if len(os.Args) >= 3 {
-			if os.Args[2] == "help" {
+			if os.Args[1] == "help" {
 				fmt.Println(post)
 			} else {
 				postCommand.Parse(os.Args[2:])
@@ -98,9 +121,6 @@ func parse() *connection.Request {
 			fmt.Println("see help for usage")
 			os.Exit(0)
 		}
-	case "help":
-		fmt.Println(help)
-		os.Exit(0)
 	default:
 		fmt.Println("not recognized")
 		fmt.Println("see help for usage")
@@ -121,6 +141,7 @@ func parse() *connection.Request {
 			ResourcePath:    resource,
 			ProtocolVersion: "HTTP/1.0",
 			Headers:         list,
+			DumpFile:        fileToSave,
 			Opts:            opts,
 		}
 
@@ -152,6 +173,7 @@ func parse() *connection.Request {
 				ProtocolVersion: "HTTP/1.0",
 				Headers:         list,
 				File:            file,
+				DumpFile:        fileToSave,
 				Body:            bodyString,
 				Opts:            opts,
 			}
@@ -209,10 +231,28 @@ func main() {
 	}
 	stringRep := string(buf)
 	res := strings.Split(stringRep, "\n\r")
-	if req.Opts["verbose"] {
-		fmt.Println(res[0])
+	if req.DumpFile == "" {
+		if req.Opts["verbose"] {
+			fmt.Println(res[0])
+		}
+		fmt.Println(res[1])
+	} else {
+		_, err := os.Create("hold.txt")
+		if err != nil {
+			fmt.Println(err)
+		}
+		fl, err := os.OpenFile(req.DumpFile, os.O_RDWR, 755)
+		if err != nil {
+			fmt.Println("error opening file: ", err)
+			os.Exit(0)
+		}
+		if req.Opts["verbose"] {
+			fl.WriteString(res[0])
+			fl.WriteString("\n")
+		}
+		fl.WriteString(res[1])
+		fl.Close()
 	}
-	fmt.Println(res[1])
 
 }
 
