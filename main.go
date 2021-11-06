@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"httpc/connection"
 	"io/ioutil"
 	"log"
 	"net"
-	"httpc/connection"
 	"os"
 	"strconv"
 	"strings"
@@ -223,7 +223,7 @@ func main() {
 		log.Println(err)
 		return
 	}
-	buf := make([]byte, 1024)
+	buf := make([]byte, 5000024)
 	err = connection.Receive(con, buf)
 	if err != nil {
 		log.Println(err)
@@ -231,27 +231,109 @@ func main() {
 	}
 	stringRep := string(buf)
 	res := strings.Split(stringRep, "\n\r")
-	if req.DumpFile == "" {
+	if req.DumpFile == "" && req.Headers["content-disposition"] != "attachment" {
+
 		if req.Opts["verbose"] {
 			fmt.Println(res[0])
 		}
 		fmt.Println(res[1])
 	} else {
-		_, err := os.Create("hold.txt")
-		if err != nil {
-			fmt.Println(err)
+		if req.Headers["content-disposition"] == "attachment" {
+
+			filetype := req.Headers["content-type"]
+			parts := strings.Split(filetype, "/")
+			switch parts[0] {
+			case "text":
+				if parts[1] == "html" {
+					filetype = ".html"
+					break
+				}
+				if parts[1] == "plain" {
+					filetype = ".txt"
+					break
+				}
+				if parts[1] == "csv" {
+					filetype = ".txt"
+					break
+				}
+			case "application":
+				if parts[1] == "json" {
+					filetype = ".json"
+					break
+				}
+				if parts[1] == "pdf" {
+					filetype = ".pdf"
+					break
+				}
+				if parts[1] == "octet-stream" {
+					filetype = ".bin"
+					break
+				}
+			case "video":
+				if parts[1] == "mp4" {
+					filetype = ".mp4"
+					break
+				}
+				if parts[1] == "mpeg" {
+					filetype = ".mpeg"
+					break
+				}
+			case "image":
+				if parts[1] == "gif" {
+					filetype = ".gif"
+					break
+				}
+				if parts[1] == "jpeg" {
+					filetype = ".jpeg"
+					break
+				}
+				if parts[1] == "png" {
+					filetype = ".png"
+					break
+				}
+			case "audio":
+				if parts[1] == "mpeg" {
+					filetype = ".mp3"
+					break
+				}
+			default:
+				filetype = ".txt"
+
+			}
+			name := "hold" + filetype
+			fl, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, 755)
+			data := []byte(res[1])
+			if err != nil {
+				fmt.Println("error opening file: ", err)
+				os.Exit(0)
+			}
+			_, err = fl.Write(data)
+			if err != nil {
+				fmt.Println("error opening file: ", err)
+				os.Exit(0)
+			}
+			if req.Opts["verbose"] {
+				fmt.Println(res[0])
+			}
+
+		} else {
+
+			_, err := os.Create("hold.txt")
+			if err != nil {
+				fmt.Println(err)
+			}
+			fl, err := os.OpenFile(req.DumpFile, os.O_RDWR, 755)
+			if err != nil {
+				fmt.Println("error opening file: ", err)
+				os.Exit(0)
+			}
+			if req.Opts["verbose"] {
+				fl.WriteString(res[0])
+				fl.WriteString("\n")
+			}
+			fl.WriteString(res[1])
+			fl.Close()
 		}
-		fl, err := os.OpenFile(req.DumpFile, os.O_RDWR, 755)
-		if err != nil {
-			fmt.Println("error opening file: ", err)
-			os.Exit(0)
-		}
-		if req.Opts["verbose"] {
-			fl.WriteString(res[0])
-			fl.WriteString("\n")
-		}
-		fl.WriteString(res[1])
-		fl.Close()
 	}
 
 }
